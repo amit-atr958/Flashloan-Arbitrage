@@ -1,0 +1,65 @@
+{
+  "name": "flashloan-arbitrage-bot",
+  "version": "1.0.0",
+  "description": "Ethereum flashloan arbitrage bot using Aave v3 and multiple DEX integrations",
+  "main": "src/monitor.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet",
+    "deploy:goerli": "hardhat run scripts/deploy.js --network goerli",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "test": "hardhat test",
+    "dev": "npm run compile && npm run test",
+    "monitor": "node src/monitor.js",
+    "start": "npm run monitor",
+    "verify:mainnet": "hardhat run scripts/verify.js --network mainnet",
+    "verify:goerli": "hardhat run scripts/verify.js --network goerli",
+    "verify:sepolia": "hardhat run scripts/verify.js --network sepolia",
+    "check:mainnet": "hardhat run scripts/check-deployment.js --network mainnet",
+    "check:goerli": "hardhat run scripts/check-deployment.js --network goerli",
+    "check:sepolia": "hardhat run scripts/check-deployment.js --network sepolia",
+    "fund:mainnet": "hardhat run scripts/fund-contract.js --network mainnet",
+    "fund:goerli": "hardhat run scripts/fund-contract.js --network goerli",
+    "fund:sepolia": "hardhat run scripts/fund-contract.js --network sepolia"
+  },
+  "keywords": [
+    "ethereum",
+    "flashloan",
+    "arbitrage",
+    "defi",
+    "aave",
+    "uniswap",
+    "dex"
+  ],
+  "author": "Amit Saroj",
+  "license": "MIT",
+  "dependencies": {
+    "@aave/core-v3": "^1.19.3",
+    "@aave/periphery-v3": "^2.0.3",
+    "@openzeppelin/contracts": "^4.9.3",
+    "@uniswap/v3-core": "^1.0.1",
+    "@uniswap/v3-periphery": "^1.4.3",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "ethers": "^5.7.2",
+    "dotenv": "^16.3.1",
+    "axios": "^1.5.0",
+    "ws": "^8.14.2",
+    "node-cron": "^3.0.2",
+    "winston": "^3.10.0",
+    "bignumber.js": "^9.1.2"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@nomicfoundation/hardhat-verify": "^1.0.4",
+    "hardhat": "^2.19.0",
+    "hardhat-gas-reporter": "^1.0.9",
+    "solidity-coverage": "^0.8.5",
+    "@typechain/hardhat": "^6.1.6",
+    "@typechain/ethers-v5": "^10.2.1",
+    "typechain": "^8.3.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
