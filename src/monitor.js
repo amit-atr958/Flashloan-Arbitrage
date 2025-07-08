@@ -16,36 +16,34 @@ const CONFIG = {
     "wss://eth-mainnet.ws.alchemyapi.io/v2/" + process.env.ALCHEMY_API_KEY,
   PRIVATE_KEY: process.env.PRIVATE_KEY,
   CONTRACT_ADDRESS: process.env.CONTRACT_ADDRESS,
-  MIN_PROFIT_USD: parseFloat(process.env.MIN_PROFIT_USD) || 50,
+  MIN_PROFIT_USD: parseFloat(process.env.MIN_PROFIT_USD) || 1,
   MAX_GAS_PRICE_GWEI: parseFloat(process.env.MAX_GAS_PRICE_GWEI) || 100,
   SLIPPAGE_TOLERANCE: parseFloat(process.env.SLIPPAGE_TOLERANCE) || 0.5, // 0.5%
   FLASHLOAN_AMOUNTS: {
-    WETH: ethers.utils.parseEther("10"), // 10 ETH
-    USDC: ethers.utils.parseUnits("50000", 6), // 50,000 USDC
-    USDT: ethers.utils.parseUnits("50000", 6), // 50,000 USDT
-    DAI: ethers.utils.parseEther("50000"), // 50,000 DAI
+    WETH: ethers.utils.parseEther("0.1"), // 0.1 ETH for testing
+    USDC: ethers.utils.parseUnits("100", 6), // 100 USDC for testing
+    USDT: ethers.utils.parseUnits("100", 6), // 100 USDT for testing
+    DAI: ethers.utils.parseEther("100"), // 100 DAI for testing
+    LINK: ethers.utils.parseEther("10"), // 10 LINK for testing
   },
+  NETWORK: process.env.NETWORK,
+  DEMO_MODE: process.env.DEMO_MODE === "true" || false, // Enable demo mode by default,
 };
 
-console.log('CONFIG', CONFIG)
+console.log("CONFIG", CONFIG);
 
-// DEX Router Addresses (Ethereum Mainnet)
+// DEX Router Addresses - Updated for Sepolia testnet
 const DEX_ROUTERS = {
-  UNISWAP_V2: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
-  UNISWAP_V3: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-  SUSHISWAP: "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F",
-  BALANCER: "0xBA12222222228d8Ba445958a75a0704d566BF2C8",
-  CURVE: "0x99a58482BD75cbab83b27EC03CA68fF489b5788f", // Curve Router
-  ONEINCH: "0x1111111254EEB25477B68fb85Ed929f73A960582", // 1inch V5 Router
+  UNISWAP_V2: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D", // Same on Sepolia
+  UNISWAP_V3: "0xE592427A0AEce92De3Edee1F18E0157C05861564", // Same on Sepolia
+  SUSHISWAP: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D", // Use Uniswap V2 for testing
 };
 
-// Token Addresses (Ethereum Mainnet)
+// Token Addresses - Real Sepolia testnet tokens
 const TOKENS = {
-  WETH: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-  USDC: "0xA0b86a33E6417c4c4c4c4c4c4c4c4c4c4c4c4c4c", // USDC on Ethereum
-  USDT: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-  DAI: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-  WBTC: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+  WETH: "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14", // WETH on Sepolia
+  USDC: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // USDC on Sepolia
+  LINK: "0x779877A7B0D9E8603169DdbD7836e478b4624789", // LINK on Sepolia
 };
 
 // Logger setup
@@ -56,7 +54,7 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
-  defaultMeta: { service: "flashloan-arbitrage" },
+  // defaultMeta: { service: "flashloan-arbitrage" },
   transports: [
     new winston.transports.File({ filename: "logs/error.log", level: "error" }),
     new winston.transports.File({ filename: "logs/combined.log" }),
@@ -94,7 +92,7 @@ class FlashloanArbitrageBot {
       this.wallet = new ethers.Wallet(CONFIG.PRIVATE_KEY, this.provider);
       logger.info("Provider and wallet initialized", {
         address: this.wallet.address,
-        network: "mainnet",
+        network: CONFIG.NETWORK,
       });
     } catch (error) {
       logger.error("Failed to initialize provider", { error: error.message });
@@ -268,7 +266,18 @@ class FlashloanArbitrageBot {
       // Execute the most profitable opportunity
       const bestOpportunity = opportunities[0];
       if (bestOpportunity.profitUSD >= CONFIG.MIN_PROFIT_USD) {
-        await this.executeArbitrage(bestOpportunity);
+        if (CONFIG.DEMO_MODE) {
+          logger.info("DEMO MODE: Would execute arbitrage", {
+            tokenA: bestOpportunity.tokenA,
+            tokenB: bestOpportunity.tokenB,
+            buyDex: bestOpportunity.buyDex,
+            sellDex: bestOpportunity.sellDex,
+            expectedProfit: bestOpportunity.profitUSD,
+            flashloanAmount: bestOpportunity.flashloanAmount,
+          });
+        } else {
+          await this.executeArbitrage(bestOpportunity);
+        }
       }
     }
   }
@@ -433,7 +442,7 @@ class FlashloanArbitrageBot {
         opportunity.flashloanAmount,
         arbParams,
         {
-          gasLimit: 800000,
+          gasLimit: 8000000,
           gasPrice: gasPrice,
         }
       );
@@ -502,13 +511,13 @@ function validateEnvironment() {
   }
 
   // Validate private key format
-  if (
-    !process.env.PRIVATE_KEY.startsWith("0x") ||
-    process.env.PRIVATE_KEY.length !== 66
-  ) {
-    logger.error("Invalid private key format");
-    process.exit(1);
-  }
+  // if (
+  //   !process.env.PRIVATE_KEY.startsWith("0x")
+  //   // ||process.env.PRIVATE_KEY.length !== 66
+  // ) {
+  //   logger.error("Invalid private key format");
+  //   process.exit(1);
+  // }
 
   // Validate contract address format
   if (!ethers.utils.isAddress(process.env.CONTRACT_ADDRESS)) {
@@ -554,6 +563,7 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 process.on("uncaughtException", (error) => {
+  console.log(error, "Uncaught Exception:");
   logger.error("Uncaught Exception:", {
     error: error.message,
     stack: error.stack,

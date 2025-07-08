@@ -133,17 +133,26 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
         uint256 premium
     ) external {
         require(msg.sender == address(this), "Internal function");
-        
+        require(params.dexRouters.length >= 2, "Need at least 2 DEXs");
+        require(params.dexRouters.length == params.swapData.length, "Mismatched arrays");
+
         uint256 initialBalance = IERC20Extended(params.tokenA).balanceOf(address(this));
         uint256 currentAmount = flashAmount;
-        
+
         // Execute trades across different DEXs
         for (uint i = 0; i < params.dexRouters.length; i++) {
             require(dexInfo[params.dexRouters[i]].isActive, "DEX not active");
-            
+            require(params.dexRouters[i] != address(0), "Invalid router address");
+
             address tokenIn = (i == 0) ? params.tokenA : params.tokenB;
             address tokenOut = (i == 0) ? params.tokenB : params.tokenA;
-            
+
+            // Ensure we have tokens to trade
+            require(currentAmount > 0, "No tokens to trade");
+
+            uint256 balanceBeforeTrade = IERC20Extended(tokenIn).balanceOf(address(this));
+            require(balanceBeforeTrade >= currentAmount, "Insufficient balance for trade");
+
             currentAmount = _executeTrade(
                 params.dexRouters[i],
                 tokenIn,
@@ -151,12 +160,16 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
                 currentAmount,
                 params.swapData[i]
             );
+
+            require(currentAmount > 0, "Trade returned zero tokens");
         }
-        
+
         uint256 finalBalance = IERC20Extended(params.tokenA).balanceOf(address(this));
+        require(finalBalance > initialBalance, "No profit generated");
+
         uint256 profit = finalBalance - initialBalance;
         uint256 totalCost = flashAmount + premium;
-        
+
         require(profit >= params.minProfit, "Insufficient profit");
         require(finalBalance >= totalCost, "Insufficient funds to repay loan");
     }
@@ -168,18 +181,31 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
         uint256 amountIn,
         bytes memory swapData
     ) internal returns (uint256 amountOut) {
+        require(amountIn > 0, "Invalid amount");
+        require(tokenIn != tokenOut, "Same token swap");
+
+        // Check token balance before swap
+        uint256 balanceBefore = IERC20Extended(tokenIn).balanceOf(address(this));
+        require(balanceBefore >= amountIn, "Insufficient token balance");
+
+        // Reset approval first, then approve
+        IERC20Extended(tokenIn).safeApprove(router, 0);
         IERC20Extended(tokenIn).safeApprove(router, amountIn);
 
         DEXInfo memory dex = dexInfo[router];
+        uint256 tokenOutBalanceBefore = IERC20Extended(tokenOut).balanceOf(address(this));
 
         if (dex.dexType == 0) { // UniswapV2 / Sushiswap
             address[] memory path = new address[](2);
             path[0] = tokenIn;
             path[1] = tokenOut;
 
+            // Calculate minimum amount out with 3% slippage tolerance
+            uint256 minAmountOut = amountIn * 97 / 100; // 3% slippage
+
             uint256[] memory amounts = IUniswapV2Router(router).swapExactTokensForTokens(
                 amountIn,
-                0, // Accept any amount of tokens out
+                minAmountOut,
                 path,
                 address(this),
                 block.timestamp + 300
@@ -187,6 +213,9 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
             amountOut = amounts[amounts.length - 1];
 
         } else if (dex.dexType == 1) { // UniswapV3
+            // Calculate minimum amount out with 3% slippage tolerance
+            uint256 minAmountOut = amountIn * 97 / 100; // 3% slippage
+
             IUniswapV3Router.ExactInputSingleParams memory params =
                 IUniswapV3Router.ExactInputSingleParams({
                     tokenIn: tokenIn,
@@ -195,20 +224,29 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
                     recipient: address(this),
                     deadline: block.timestamp + 300,
                     amountIn: amountIn,
-                    amountOutMinimum: 0,
+                    amountOutMinimum: minAmountOut,
                     sqrtPriceLimitX96: 0
                 });
 
             amountOut = IUniswapV3Router(router).exactInputSingle(params);
         } else {
             // For other DEXs, use low-level call with provided swap data
-            (bool success, bytes memory result) = router.call(swapData);
+            (bool success,) = router.call(swapData);
             require(success, "DEX swap failed");
-            amountOut = abi.decode(result, (uint256));
+
+            // Verify we received tokens
+            uint256 tokenOutBalanceAfterCall = IERC20Extended(tokenOut).balanceOf(address(this));
+            amountOut = tokenOutBalanceAfterCall - tokenOutBalanceBefore;
         }
 
         require(amountOut > 0, "No tokens received from swap");
-        return amountOut;
+
+        // Verify the actual balance change
+        uint256 tokenOutBalanceAfter = IERC20Extended(tokenOut).balanceOf(address(this));
+        uint256 actualAmountOut = tokenOutBalanceAfter - tokenOutBalanceBefore;
+        require(actualAmountOut > 0, "No actual tokens received");
+
+        return actualAmountOut;
     }
 
     function requestFlashLoan(

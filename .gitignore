@@ -17,7 +17,6 @@ artifacts/
 typechain-types/
 
 # Deployment files
-deployments/
 .openzeppelin/
 
 # Logs

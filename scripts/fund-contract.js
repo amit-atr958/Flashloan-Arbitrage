@@ -78,7 +78,7 @@ async function main() {
     const tx = await deployer.sendTransaction({
       to: contractAddress,
       value: fundingAmount,
-      gasLimit: 21000,
+      gasLimit: 31000,
     });
 
     console.log("Transaction hash:", tx.hash);
