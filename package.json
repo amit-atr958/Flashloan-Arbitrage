@@ -20,7 +20,10 @@
     "check:sepolia": "hardhat run scripts/check-deployment.js --network sepolia",
     "fund:mainnet": "hardhat run scripts/fund-contract.js --network mainnet",
     "fund:goerli": "hardhat run scripts/fund-contract.js --network goerli",
-    "fund:sepolia": "hardhat run scripts/fund-contract.js --network sepolia"
+    "fund:sepolia": "hardhat run scripts/fund-contract.js --network sepolia",
+    "deploy:multichain": "node scripts/deploy-multichain.js",
+    "monitor:multichain": "node src/multichain-monitor.js",
+    "start:multichain": "npm run monitor:multichain"
   },
   "keywords": [
     "ethereum",

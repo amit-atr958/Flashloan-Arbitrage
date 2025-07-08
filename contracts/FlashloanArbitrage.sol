@@ -200,8 +200,19 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
             path[0] = tokenIn;
             path[1] = tokenOut;
 
-            // Calculate minimum amount out with 3% slippage tolerance
-            uint256 minAmountOut = amountIn * 97 / 100; // 3% slippage
+            // Get expected amounts first to calculate realistic slippage
+            uint256[] memory expectedAmounts;
+            try IUniswapV2Router(router).getAmountsOut(amountIn, path) returns (uint256[] memory estimatedAmounts) {
+                expectedAmounts = estimatedAmounts;
+            } catch {
+                // If getAmountsOut fails, use conservative slippage
+                expectedAmounts = new uint256[](2);
+                expectedAmounts[0] = amountIn;
+                expectedAmounts[1] = amountIn * 90 / 100; // 10% slippage fallback
+            }
+
+            // Use 5% slippage for testnet (more realistic)
+            uint256 minAmountOut = expectedAmounts[expectedAmounts.length - 1] * 95 / 100;
 
             uint256[] memory amounts = IUniswapV2Router(router).swapExactTokensForTokens(
                 amountIn,
@@ -213,8 +224,8 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
             amountOut = amounts[amounts.length - 1];
 
         } else if (dex.dexType == 1) { // UniswapV3
-            // Calculate minimum amount out with 3% slippage tolerance
-            uint256 minAmountOut = amountIn * 97 / 100; // 3% slippage
+            // Use 5% slippage for testnet (more realistic than 3%)
+            uint256 minAmountOut = amountIn * 95 / 100;
 
             IUniswapV3Router.ExactInputSingleParams memory params =
                 IUniswapV3Router.ExactInputSingleParams({
@@ -231,6 +242,7 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
             amountOut = IUniswapV3Router(router).exactInputSingle(params);
         } else {
             // For other DEXs, use low-level call with provided swap data
+            require(swapData.length > 0, "Empty swap data");
             (bool success,) = router.call(swapData);
             require(success, "DEX swap failed");
 
