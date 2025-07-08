@@ -1,0 +1,13 @@
+{
+  "sepolia": {
+    "address": "0x7CA68B668220bcCd07017dd381764689d58e3eB4",
+    "network": "Sepolia Testnet",
+    "chainId": 11155111,
+    "deployedAt": "2025-07-08T17:27:49.685Z",
+    "explorerUrl": "https://sepolia.etherscan.io/address/0x7CA68B668220bcCd07017dd381764689d58e3eB4",
+    "aaveProvider": "0x012bAC54348C0E635dCAc9D5FB99f06F24136C9A",
+    "txHash": "0x138fb02568c4d1ec1be036172efd83fdde22e000ccdd1cc82e9b6fe1eed4d7c1"
+  },
+  "lastUpdated": "2025-07-08T17:27:49.685Z",
+  "totalNetworks": 1
+}

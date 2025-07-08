@@ -5,25 +5,12 @@
   "main": "src/monitor.js",
   "scripts": {
     "compile": "hardhat compile",
-    "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet",
-    "deploy:goerli": "hardhat run scripts/deploy.js --network goerli",
-    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
     "test": "hardhat test",
     "dev": "npm run compile && npm run test",
-    "monitor": "node src/monitor.js",
-    "start": "npm run monitor",
-    "verify:mainnet": "hardhat run scripts/verify.js --network mainnet",
-    "verify:goerli": "hardhat run scripts/verify.js --network goerli",
-    "verify:sepolia": "hardhat run scripts/verify.js --network sepolia",
-    "check:mainnet": "hardhat run scripts/check-deployment.js --network mainnet",
-    "check:goerli": "hardhat run scripts/check-deployment.js --network goerli",
-    "check:sepolia": "hardhat run scripts/check-deployment.js --network sepolia",
-    "fund:mainnet": "hardhat run scripts/fund-contract.js --network mainnet",
-    "fund:goerli": "hardhat run scripts/fund-contract.js --network goerli",
-    "fund:sepolia": "hardhat run scripts/fund-contract.js --network sepolia",
+    "deploy": "hardhat run scripts/deploy-single.js",
     "deploy:multichain": "node scripts/deploy-multichain.js",
-    "monitor:multichain": "node src/multichain-monitor.js",
-    "start:multichain": "npm run monitor:multichain"
+    "start": "node src/monitor.js",
+    "start:multichain": "node src/multichain-monitor.js"
   },
   "keywords": [
     "ethereum",
