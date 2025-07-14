@@ -30,14 +30,16 @@ const targetNetwork = networkArg
 const CONFIG = {
   PRIVATE_KEY: process.env.PRIVATE_KEY,
   ALCHEMY_API_KEY: process.env.ALCHEMY_API_KEY,
-  MIN_PROFIT_USD: parseFloat(process.env.MIN_PROFIT_USD) || 5,
-  MAX_GAS_PRICE_GWEI: parseFloat(process.env.MAX_GAS_PRICE_GWEI) || 100,
+  MIN_PROFIT_USD: parseFloat(process.env.MIN_PROFIT_USD) || 2, // Lower for testnet
+  MAX_GAS_PRICE_GWEI: parseFloat(process.env.MAX_GAS_PRICE_GWEI) || 50, // Lower for Sepolia
   MAX_RISK_SCORE: parseFloat(process.env.MAX_RISK_SCORE) || 70,
-  SLIPPAGE_TOLERANCE: parseFloat(process.env.SLIPPAGE_TOLERANCE) || 0.5,
+  SLIPPAGE_TOLERANCE: parseFloat(process.env.SLIPPAGE_TOLERANCE) || 1.0, // Higher for testnet
   DEMO_MODE: process.env.DEMO_MODE === "true" || false,
   MULTICHAIN: multichainArg,
   TARGET_NETWORK: targetNetwork,
-  SCAN_INTERVAL: 15000, // 15 seconds
+  SCAN_INTERVAL: 30000, // 30 seconds for Sepolia
+  ORACLE_VALIDATION: true, // Enable Chainlink oracle validation
+  FLASHLOAN_AMOUNT: ethers.utils.parseEther("1000"), // 1000 tokens for testing
 };
 
 console.log("🚀 Starting REAL Arbitrage Bot...");
@@ -160,7 +162,11 @@ class RealArbitrageBot {
     );
 
     // Initialize enhanced arbitrage components
-    this.priceFetcher = new DexPriceFetcher(this.provider, logger);
+    this.priceFetcher = new DexPriceFetcher(
+      this.provider,
+      logger,
+      this.networkConfig
+    );
     this.profitCalculator = new ProfitCalculator(
       this.provider,
       logger,
@@ -311,13 +317,20 @@ class RealArbitrageBot {
         const amountIn = ethers.utils.parseEther("0.1"); // Test with 0.1 ETH worth
 
         try {
-          // Find arbitrage opportunity using real price fetcher
-          const opportunity = await this.priceFetcher.findArbitrageOpportunity(
-            this.dexConfigs,
-            tokenA,
-            tokenB,
-            amountIn
-          );
+          // Find arbitrage opportunity using oracle-validated price fetcher
+          const opportunity = CONFIG.ORACLE_VALIDATION
+            ? await this.priceFetcher.findValidatedArbitrageOpportunity(
+                this.dexConfigs,
+                tokenA,
+                tokenB,
+                amountIn
+              )
+            : await this.priceFetcher.findArbitrageOpportunity(
+                this.dexConfigs,
+                tokenA,
+                tokenB,
+                amountIn
+              );
 
           if (opportunity) {
             totalOpportunities++;
@@ -330,6 +343,13 @@ class RealArbitrageBot {
               profitPercentage: opportunity.profitPercentage + "%",
               buyPrice: opportunity.buyPrice.toFixed(6),
               sellPrice: opportunity.sellPrice.toFixed(6),
+              oracleValidated: opportunity.oracleValidated || false,
+              buyDeviation: opportunity.buyDeviation
+                ? opportunity.buyDeviation.toFixed(2) + "%"
+                : "N/A",
+              sellDeviation: opportunity.sellDeviation
+                ? opportunity.sellDeviation.toFixed(2) + "%"
+                : "N/A",
             });
 
             // Calculate real profitability

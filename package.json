@@ -6,11 +6,20 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "test:sepolia": "hardhat test test/SepoliaArbitrage.test.js --network sepolia",
     "dev": "npm run compile && npm run test",
-    "deploy": "hardhat run scripts/deploy-single.js",
+    "deploy": "hardhat run scripts/deploy-single.js --network sepolia",
+    "deploy:sepolia": "hardhat run scripts/deploy-single.js --network sepolia",
     "deploy:multichain": "node scripts/deploy-multichain.js",
-    "start": "node src/monitor.js",
-    "start:multichain": "node src/multichain-monitor.js"
+    "verify:sepolia": "hardhat verify --network sepolia",
+    "check:sepolia": "node -e \"const config = require('./config/deployments.json'); console.log('Sepolia deployment:', config.sepolia || 'Not deployed'); process.exit(config.sepolia ? 0 : 1)\"",
+    "fund:sepolia": "node -e \"const { ethers } = require('ethers'); const config = require('./config/deployments.json'); if (!config.sepolia) { console.error('Contract not deployed to Sepolia'); process.exit(1); } console.log('Send test ETH to contract:', config.sepolia.address); console.log('Sepolia Faucet: https://sepoliafaucet.com/'); console.log('Aave Faucet: https://staging.aave.com/faucet/');\"",
+    "start": "node src/monitor.js --network=sepolia",
+    "start:sepolia": "node src/monitor.js --network=sepolia",
+    "start:multichain": "node src/multichain-monitor.js",
+    "logs": "tail -f logs/combined.log",
+    "clean": "hardhat clean && rm -rf cache artifacts",
+    "setup:sepolia": "npm run compile && npm run deploy:sepolia && npm run check:sepolia && npm run fund:sepolia"
   },
   "keywords": [
     "ethereum",

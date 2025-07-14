@@ -1,13 +1,40 @@
 {
+  "lastUpdated": "2025-07-14T09:55:52.879Z",
+  "totalNetworks": 1,
   "sepolia": {
-    "address": "0x7CA68B668220bcCd07017dd381764689d58e3eB4",
+    "address": "0x503c08A37fF5Ab51Da984668E8C8B14539aB1Fa2",
     "network": "Sepolia Testnet",
     "chainId": 11155111,
-    "deployedAt": "2025-07-08T17:27:49.685Z",
-    "explorerUrl": "https://sepolia.etherscan.io/address/0x7CA68B668220bcCd07017dd381764689d58e3eB4",
+    "deployedAt": "2025-07-14T09:55:52.879Z",
+    "explorerUrl": "https://sepolia.etherscan.io/address/0x503c08A37fF5Ab51Da984668E8C8B14539aB1Fa2",
     "aaveProvider": "0x012bAC54348C0E635dCAc9D5FB99f06F24136C9A",
-    "txHash": "0x138fb02568c4d1ec1be036172efd83fdde22e000ccdd1cc82e9b6fe1eed4d7c1"
-  },
-  "lastUpdated": "2025-07-08T17:27:49.685Z",
-  "totalNetworks": 1
+    "txHash": "0x8ee610abf4b2109831ee39f7235b09bb7a85d383c9b60aafb7d6b3f33339ddbe",
+    "dexRouters": {
+      "UNISWAP_V2": "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
+      "UNISWAP_V3": "0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E",
+      "UNISWAP_V3_FACTORY": "0x0227628f3F023bb0B980b67D528571c95c6DaC1c",
+      "UNISWAP_V2_FACTORY": "0xF62c03E08ada871A0bEb309762E260a7a6a880E6",
+      "SUSHISWAP": "0xeaBcE3E74EF41FB40024a21Cc2ee2F5dDc615791",
+      "SUSHISWAP_FACTORY": "0x734583f62Bb6ACe3c9bA9bd5A53143CA2Ce8C55A",
+      "BALANCER_VAULT": "0xBA12222222228d8Ba445958a75a0704d566BF2C8"
+    },
+    "tokens": {
+      "WETH": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
+      "USDC": "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8",
+      "DAI": "0x68194a729C2450ad26072b3D33ADaCbcef39D574",
+      "USDT": "0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0"
+    },
+    "priceFeeds": {
+      "ETH_USD": "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+      "BTC_USD": "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43",
+      "USDC_USD": "0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E",
+      "DAI_USD": "0x14866185B1962B63C3Ea9E03Bc1da838bab34C19"
+    },
+    "features": {
+      "chainlinkOracles": true,
+      "balancerV2": true,
+      "uniswapV3": true,
+      "sushiswap": true
+    }
+  }
 }

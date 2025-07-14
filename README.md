@@ -16,6 +16,7 @@ A sophisticated arbitrage bot that automatically detects and executes profitable
 ## 🚀 Quick Start
 
 ### 1. Installation
+
 ```bash
 git clone <repository-url>
 cd flashloan-arbitrage-bot
@@ -23,25 +24,73 @@ npm install
 ```
 
 ### 2. Configuration
+
 ```bash
 cp .env.example .env
 # Edit .env with your keys
 ```
 
-### 3. Deploy & Run
-```bash
-# Single chain (Sepolia testnet)
-HARDHAT_NETWORK=sepolia npm run deploy
-npm run start --network=sepolia
+### 3. Sepolia Testnet Deployment (Recommended)
 
-# Multi-chain deployment
+```bash
+# Complete Sepolia setup (compile, deploy, check, fund instructions)
+npm run setup:sepolia
+
+# Or step by step:
+npm run compile
+npm run deploy:sepolia
+npm run verify:sepolia <CONTRACT_ADDRESS>
+npm run check:sepolia
+npm run fund:sepolia
+npm run start:sepolia
+```
+
+### 4. Multi-chain Deployment
+
+```bash
 npm run deploy:multichain
 npm run start:multichain
 ```
 
+## 🔗 Sepolia Testnet Integration
+
+This bot is specifically optimized for Sepolia testnet with real DEX integrations:
+
+### Real DEX Addresses (Sepolia)
+
+- **Uniswap V2 Router**: `0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3`
+- **Uniswap V3 Router**: `0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E`
+- **Sushiswap Router**: `0xeaBcE3E74EF41FB40024a21Cc2ee2F5dDc615791`
+- **Balancer V2 Vault**: `0xBA12222222228d8Ba445958a75a0704d566BF2C8`
+- **Aave V3 Provider**: `0x012bAC54348C0E635dCAc9D5FB99f06F24136C9A`
+
+### Chainlink Price Feeds (Sepolia)
+
+- **ETH/USD**: `0x694AA1769357215DE4FAC081bf1f309aDC325306`
+- **BTC/USD**: `0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43`
+- **USDC/USD**: `0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E`
+- **DAI/USD**: `0x14866185B1962B63C3Ea9E03Bc1da838bab34C19`
+
+### Test Tokens (Sepolia)
+
+- **WETH**: `0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14`
+- **USDC**: `0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8`
+- **DAI**: `0x68194a729C2450ad26072b3D33ADaCbcef39D574`
+
+### Features
+
+- ✅ Real flashloan execution via Aave V3
+- ✅ Oracle price validation via Chainlink
+- ✅ Multi-DEX arbitrage opportunities
+- ✅ Gas optimization for testnet
+- ✅ Comprehensive logging and monitoring
+- ✅ Automatic profit calculation
+- ✅ MEV protection mechanisms
+
 ## 📋 Available Commands
 
 ### Core Commands
+
 ```bash
 npm run compile              # Compile smart contracts
 npm run test                # Run test suite
@@ -52,6 +101,7 @@ npm run start:multichain    # Start multi-chain bot
 ```
 
 ### Single Chain Usage
+
 ```bash
 # Deploy to specific network
 HARDHAT_NETWORK=sepolia npm run deploy
@@ -64,6 +114,7 @@ npm run start --network=ethereum
 ```
 
 ### Multi-Chain Usage
+
 ```bash
 # Deploy to all supported networks
 npm run deploy:multichain
@@ -75,6 +126,7 @@ npm run start:multichain
 ## 🌍 Supported Networks (50+)
 
 ### **Tier 1 - Major Networks**
+
 - ✅ **Ethereum Mainnet** - Full Aave V3 + Uniswap support
 - ✅ **Polygon** - High liquidity, low fees
 - ✅ **Arbitrum One** - L2 scaling, fast transactions
@@ -85,17 +137,19 @@ npm run start:multichain
 - ✅ **Fantom Opera** - SpookySwap, SpiritSwap
 
 ### **Tier 2 - Emerging Networks**
+
 - ✅ **Linea** - ConsenSys zkEVM
 - ✅ **Scroll** - zkSync-based L2
 - ✅ **zkSync Era** - Native zkEVM
 - ✅ **Mantle** - BitDAO L2 solution
 - ✅ **Sepolia Testnet** - Testing environment
 
-*And 35+ more EVM-compatible networks...*
+_And 35+ more EVM-compatible networks..._
 
 ## ⚙️ Configuration
 
 ### Environment Variables (.env)
+
 ```env
 PRIVATE_KEY=your_private_key_here
 ALCHEMY_API_KEY=your_alchemy_api_key_here
@@ -107,6 +161,7 @@ NETWORK=sepolia
 ```
 
 ### Auto-Configuration
+
 - ✅ Contract addresses are **automatically stored** after deployment
 - ✅ No need to manually update `.env` with contract addresses
 - ✅ Bot automatically loads the correct contract for each network
@@ -114,18 +169,21 @@ NETWORK=sepolia
 ## 🔧 How It Works
 
 ### Single Chain Mode
+
 1. **Deploy**: `HARDHAT_NETWORK=sepolia npm run deploy`
 2. **Auto-Store**: Contract address saved to `config/deployments.json`
 3. **Start**: `npm run start --network=sepolia`
 4. **Monitor**: Bot scans for arbitrage opportunities on Sepolia
 
 ### Multi-Chain Mode
+
 1. **Deploy**: `npm run deploy:multichain` (deploys to all networks)
 2. **Auto-Store**: All contract addresses saved automatically
 3. **Start**: `npm run start:multichain`
 4. **Monitor**: Bot scans for cross-chain arbitrage opportunities
 
 ### Arbitrage Process
+
 1. **Price Monitoring**: Monitors token prices across multiple DEXs
 2. **Opportunity Detection**: Identifies profitable price discrepancies
 3. **Flashloan Execution**: Executes arbitrage using Aave V3 flashloans
@@ -135,11 +193,13 @@ NETWORK=sepolia
 ## 💰 Profit Potential
 
 ### Conservative Estimates
+
 - **Single Chain**: $50-200/day per network
 - **Multi-Chain**: $2,500-10,000/day across 50 networks
 - **Peak Volatility**: $10,000-50,000/day during market events
 
 ### Key Advantages
+
 - **50+ Networks**: Massive opportunity surface
 - **Real-time Execution**: Sub-second arbitrage detection
 - **Cross-chain Arbitrage**: Price differences between networks
@@ -183,12 +243,14 @@ HARDHAT_NETWORK=sepolia npm run deploy
 ## 🔍 Troubleshooting
 
 ### Common Issues
+
 1. **No Contract Address**: Run deployment first
 2. **RPC Errors**: Check ALCHEMY_API_KEY
 3. **Transaction Failures**: Check gas prices and slippage
 4. **No Opportunities**: Normal on testnets (limited liquidity)
 
 ### Debug Mode
+
 ```bash
 LOG_LEVEL=debug npm run start --network=sepolia
 ```
@@ -214,18 +276,21 @@ LOG_LEVEL=debug npm run start --network=sepolia
 ## 🚀 Production Deployment
 
 ### Step 1: Test on Sepolia
+
 ```bash
 HARDHAT_NETWORK=sepolia npm run deploy
 npm run start --network=sepolia
 ```
 
 ### Step 2: Deploy to Mainnet
+
 ```bash
 HARDHAT_NETWORK=ethereum npm run deploy
 npm run start --network=ethereum
 ```
 
 ### Step 3: Multi-Chain Scaling
+
 ```bash
 npm run deploy:multichain
 npm run start:multichain

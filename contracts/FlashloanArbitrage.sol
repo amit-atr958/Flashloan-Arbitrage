@@ -9,6 +9,23 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+// Chainlink Price Feed Interface
+interface AggregatorV3Interface {
+    function decimals() external view returns (uint8);
+    function description() external view returns (string memory);
+    function version() external view returns (uint256);
+    function latestRoundData()
+        external
+        view
+        returns (
+            uint80 roundId,
+            int256 price,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        );
+}
+
 interface IERC20Extended is IERC20 {
     function decimals() external view returns (uint8);
     function symbol() external view returns (string memory);
@@ -38,14 +55,64 @@ interface IUniswapV3Router {
         uint256 amountOutMinimum;
         uint160 sqrtPriceLimitX96;
     }
-    
+
     function exactInputSingle(ExactInputSingleParams calldata params)
         external payable returns (uint256 amountOut);
 }
 
+interface IUniswapV3Factory {
+    function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address pool);
+}
+
+interface IUniswapV3Pool {
+    function slot0() external view returns (
+        uint160 sqrtPriceX96,
+        int24 tick,
+        uint16 observationIndex,
+        uint16 observationCardinality,
+        uint16 observationCardinalityNext,
+        uint8 feeProtocol,
+        bool unlocked
+    );
+}
+
+interface IBalancerVault {
+    struct SingleSwap {
+        bytes32 poolId;
+        uint8 kind;
+        address assetIn;
+        address assetOut;
+        uint256 amount;
+        bytes userData;
+    }
+
+    struct FundManagement {
+        address sender;
+        bool fromInternalBalance;
+        address payable recipient;
+        bool toInternalBalance;
+    }
+
+    function swap(
+        SingleSwap memory singleSwap,
+        FundManagement memory funds,
+        uint256 limit,
+        uint256 deadline
+    ) external payable returns (uint256);
+
+    function getPoolTokens(bytes32 poolId)
+        external
+        view
+        returns (
+            address[] memory tokens,
+            uint256[] memory balances,
+            uint256 lastChangeBlock
+        );
+}
+
 contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20Extended;
-    
+
     struct ArbitrageParams {
         address tokenA;
         address tokenB;
@@ -54,18 +121,26 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
         bytes[] swapData;
         uint256 minProfit;
     }
-    
+
     struct DEXInfo {
         address router;
         uint8 dexType; // 0: UniV2, 1: UniV3, 2: Sushi, 3: Balancer, 4: Curve, 5: 1inch
         bool isActive;
     }
-    
+
     mapping(address => DEXInfo) public dexInfo;
     address[] public activeDEXs;
-    
+    mapping(address => address) public priceFeeds; // token => Chainlink price feed
+
     uint256 public constant MAX_SLIPPAGE = 300; // 3%
     uint256 public constant SLIPPAGE_BASE = 10000;
+    uint256 public constant PRICE_TOLERANCE = 200; // 2% price tolerance for oracle checks
+
+    // Sepolia testnet addresses
+    address public constant UNISWAP_V3_FACTORY = 0x0227628f3F023bb0B980b67D528571c95c6DaC1c;
+    address public constant UNISWAP_V2_FACTORY = 0xF62c03E08ada871A0bEb309762E260a7a6a880E6;
+    address public constant SUSHISWAP_FACTORY = 0x734583f62Bb6ACe3c9bA9bd5A53143CA2Ce8C55A;
+    address public constant BALANCER_VAULT = 0xBA12222222228d8Ba445958a75a0704d566BF2C8;
     
     event ArbitrageExecuted(
         address indexed tokenA,
@@ -85,14 +160,19 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
     event DEXAdded(address indexed router, uint8 dexType);
     event DEXRemoved(address indexed router);
     
-    constructor(address _addressProvider) 
-        FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_addressProvider)) 
+    constructor(address _addressProvider)
+        FlashLoanSimpleReceiverBase(IPoolAddressesProvider(_addressProvider))
     {
-        // Initialize with major DEX routers on Ethereum mainnet
-        _addDEX(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D, 0); // Uniswap V2
-        _addDEX(0xE592427A0AEce92De3Edee1F18E0157C05861564, 1); // Uniswap V3
-        _addDEX(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F, 0); // Sushiswap
-        _addDEX(0xBA12222222228d8Ba445958a75a0704d566BF2C8, 3); // Balancer V2
+        // Initialize with Sepolia testnet DEX routers
+        _addDEX(0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3, 0); // Uniswap V2 Router02
+        _addDEX(0x3bFA4769FB09eefC5a80d6E87c3B9C650f7Ae48E, 1); // Uniswap V3 SwapRouter02
+        _addDEX(0xeaBcE3E74EF41FB40024a21Cc2ee2F5dDc615791, 0); // Sushiswap Router02
+        _addDEX(0xBA12222222228d8Ba445958a75a0704d566BF2C8, 3); // Balancer V2 Vault
+
+        // Initialize Chainlink price feeds for Sepolia
+        priceFeeds[0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14] = 0x694AA1769357215DE4FAC081bf1f309aDC325306; // WETH/USD
+        priceFeeds[0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8] = 0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E; // USDC/USD
+        priceFeeds[0x68194a729C2450ad26072b3D33ADaCbcef39D574] = 0x14866185B1962B63C3Ea9E03Bc1da838bab34C19; // DAI/USD
     }
     
     function executeOperation(
@@ -136,6 +216,9 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
         require(params.dexRouters.length >= 2, "Need at least 2 DEXs");
         require(params.dexRouters.length == params.swapData.length, "Mismatched arrays");
 
+        // Validate prices against Chainlink oracles before executing
+        _validatePricesWithOracle(params.tokenA, params.tokenB);
+
         uint256 initialBalance = IERC20Extended(params.tokenA).balanceOf(address(this));
         uint256 currentAmount = flashAmount;
 
@@ -172,6 +255,46 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
 
         require(profit >= params.minProfit, "Insufficient profit");
         require(finalBalance >= totalCost, "Insufficient funds to repay loan");
+    }
+
+    function _validatePricesWithOracle(address tokenA, address tokenB) internal view {
+        address feedA = priceFeeds[tokenA];
+        address feedB = priceFeeds[tokenB];
+
+        // Skip validation if price feeds are not available
+        if (feedA == address(0) || feedB == address(0)) {
+            return;
+        }
+
+        try AggregatorV3Interface(feedA).latestRoundData() returns (
+            uint80,
+            int256 priceA,
+            uint256,
+            uint256 updatedAtA,
+            uint80
+        ) {
+            try AggregatorV3Interface(feedB).latestRoundData() returns (
+                uint80,
+                int256 priceB,
+                uint256,
+                uint256 updatedAtB,
+                uint80
+            ) {
+                // Check if prices are recent (within 1 hour)
+                require(block.timestamp - updatedAtA < 3600, "Price feed A stale");
+                require(block.timestamp - updatedAtB < 3600, "Price feed B stale");
+                require(priceA > 0 && priceB > 0, "Invalid oracle prices");
+
+                // Additional price sanity checks can be added here
+                // For now, we just ensure the feeds are working and recent
+            } catch {
+                // If oracle B fails, skip validation
+                return;
+            }
+        } catch {
+            // If oracle A fails, skip validation
+            return;
+        }
     }
 
     function _executeTrade(
@@ -240,6 +363,37 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
                 });
 
             amountOut = IUniswapV3Router(router).exactInputSingle(params);
+        } else if (dex.dexType == 3) { // Balancer V2
+            // For Balancer, we need a pool ID - this is a simplified implementation
+            // In practice, you would need to find the appropriate pool ID for the token pair
+            bytes32 poolId = 0x0000000000000000000000000000000000000000000000000000000000000000; // Placeholder
+
+            // Use 5% slippage for testnet
+            uint256 minAmountOut = amountIn * 95 / 100;
+
+            IBalancerVault.SingleSwap memory singleSwap = IBalancerVault.SingleSwap({
+                poolId: poolId,
+                kind: 0, // GIVEN_IN
+                assetIn: tokenIn,
+                assetOut: tokenOut,
+                amount: amountIn,
+                userData: ""
+            });
+
+            IBalancerVault.FundManagement memory funds = IBalancerVault.FundManagement({
+                sender: address(this),
+                fromInternalBalance: false,
+                recipient: payable(address(this)),
+                toInternalBalance: false
+            });
+
+            // Note: This will fail without a valid pool ID
+            // In production, you would query for available pools first
+            try IBalancerVault(router).swap(singleSwap, funds, minAmountOut, block.timestamp + 300) returns (uint256 result) {
+                amountOut = result;
+            } catch {
+                revert("Balancer swap failed - no valid pool");
+            }
         } else {
             // For other DEXs, use low-level call with provided swap data
             require(swapData.length > 0, "Empty swap data");
@@ -314,6 +468,24 @@ contract FlashloanArbitrage is FlashLoanSimpleReceiverBase, Ownable, ReentrancyG
 
     function getActiveDEXs() external view returns (address[] memory) {
         return activeDEXs;
+    }
+
+    function setPriceFeed(address token, address priceFeed) external onlyOwner {
+        require(token != address(0), "Invalid token address");
+        require(priceFeed != address(0), "Invalid price feed address");
+        priceFeeds[token] = priceFeed;
+    }
+
+    function getPriceFeed(address token) external view returns (address) {
+        return priceFeeds[token];
+    }
+
+    function getLatestPrice(address token) external view returns (int256, uint256) {
+        address priceFeed = priceFeeds[token];
+        require(priceFeed != address(0), "Price feed not set");
+
+        (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(priceFeed).latestRoundData();
+        return (price, updatedAt);
     }
 
     function estimateGas(

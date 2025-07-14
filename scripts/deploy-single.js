@@ -6,7 +6,7 @@ const networks = require("../config/networks.json");
 async function main() {
   const networkName = process.env.HARDHAT_NETWORK || "sepolia";
   const networkConfig = networks[networkName];
-  
+
   if (!networkConfig) {
     throw new Error(`Network ${networkName} not found in config`);
   }
@@ -14,8 +14,10 @@ async function main() {
   console.log(`🚀 Deploying to ${networkConfig.name}...`);
 
   // Get the contract factory
-  const FlashloanArbitrage = await ethers.getContractFactory("FlashloanArbitrage");
-  
+  const FlashloanArbitrage = await ethers.getContractFactory(
+    "FlashloanArbitrage"
+  );
+
   // Get Aave address provider
   const aaveProvider = networkConfig.aaveAddressProvider;
   if (!aaveProvider) {
@@ -31,7 +33,40 @@ async function main() {
 
   console.log(`✅ Contract deployed to: ${contract.address}`);
   console.log(`📊 Transaction hash: ${contract.deployTransaction.hash}`);
-  console.log(`🔗 Explorer: ${networkConfig.explorerUrl}/address/${contract.address}`);
+  console.log(
+    `🔗 Explorer: ${networkConfig.explorerUrl}/address/${contract.address}`
+  );
+
+  // Setup price feeds for Sepolia if available
+  if (networkConfig.priceFeeds && networkName === "sepolia") {
+    console.log("\n🔗 Setting up Chainlink price feeds...");
+
+    for (const [tokenSymbol, tokenAddress] of Object.entries(
+      networkConfig.tokens
+    )) {
+      const priceFeedKey = `${tokenSymbol}_USD`;
+      const priceFeedAddress = networkConfig.priceFeeds[priceFeedKey];
+
+      if (priceFeedAddress) {
+        try {
+          console.log(
+            `Setting price feed for ${tokenSymbol}: ${priceFeedAddress}`
+          );
+          const tx = await contract.setPriceFeed(
+            tokenAddress,
+            priceFeedAddress
+          );
+          await tx.wait();
+          console.log(`✅ Price feed set for ${tokenSymbol}`);
+        } catch (error) {
+          console.warn(
+            `⚠️ Failed to set price feed for ${tokenSymbol}:`,
+            error.message
+          );
+        }
+      }
+    }
+  }
 
   // Save deployment info
   const configDir = path.join(__dirname, "../config");
@@ -41,11 +76,11 @@ async function main() {
 
   const deploymentsFile = path.join(configDir, "deployments.json");
   let deployments = {};
-  
+
   // Load existing deployments
   if (fs.existsSync(deploymentsFile)) {
     try {
-      deployments = JSON.parse(fs.readFileSync(deploymentsFile, 'utf8'));
+      deployments = JSON.parse(fs.readFileSync(deploymentsFile, "utf8"));
     } catch (error) {
       console.warn("Failed to load existing deployments:", error.message);
     }
@@ -59,11 +94,22 @@ async function main() {
     deployedAt: new Date().toISOString(),
     explorerUrl: `${networkConfig.explorerUrl}/address/${contract.address}`,
     aaveProvider: aaveProvider,
-    txHash: contract.deployTransaction.hash
+    txHash: contract.deployTransaction.hash,
+    dexRouters: networkConfig.dexRouters,
+    tokens: networkConfig.tokens,
+    priceFeeds: networkConfig.priceFeeds || {},
+    features: {
+      chainlinkOracles: !!networkConfig.priceFeeds,
+      balancerV2: !!networkConfig.dexRouters.BALANCER_VAULT,
+      uniswapV3: !!networkConfig.dexRouters.UNISWAP_V3,
+      sushiswap: !!networkConfig.dexRouters.SUSHISWAP,
+    },
   };
 
   deployments.lastUpdated = new Date().toISOString();
-  deployments.totalNetworks = Object.keys(deployments).filter(key => key !== 'lastUpdated' && key !== 'totalNetworks').length;
+  deployments.totalNetworks = Object.keys(deployments).filter(
+    (key) => key !== "lastUpdated" && key !== "totalNetworks"
+  ).length;
 
   // Save updated deployments
   fs.writeFileSync(deploymentsFile, JSON.stringify(deployments, null, 2));
